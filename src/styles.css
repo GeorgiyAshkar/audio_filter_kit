@@ -1,0 +1,13 @@
+:root { font-family: Inter, sans-serif; }
+body { margin: 0; background: #f8f9fb; }
+.layout { padding: 12px; }
+.toolbar { display: flex; gap: 12px; align-items: center; margin-bottom: 10px; }
+.content { display: grid; grid-template-columns: 340px 1fr; gap: 12px; }
+.panel, .main-panel { background: white; border-radius: 8px; padding: 12px; border: 1px solid #e3e6ee; }
+.btn-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.filter-card { border: 1px solid #ddd; border-radius: 6px; margin: 8px 0; padding: 8px; }
+.row { display: flex; gap: 8px; align-items: center; }
+.between { justify-content: space-between; }
+.charts { display: flex; flex-direction: column; gap: 8px; }
+.metrics { display: flex; gap: 12px; margin-top: 8px; }
+.upload input { margin-left: 8px; }
