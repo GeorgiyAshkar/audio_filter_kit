@@ -59,7 +59,7 @@ from scipy.signal import welch
 # the sibling package shipped with this application.
 import os as _os
 import sys as _sys
-_sys.path.insert(0, _os.path.abspath(_os.path.join(_os.path.dirname(__file__), '..')))
+_sys.path.insert(0, _os.path.abspath(_os.path.dirname(__file__)))
 
 from backend.core import (
     ensure_mono,
@@ -322,7 +322,6 @@ class AudioFilterApp(QMainWindow):
                 self.on_select_span,
                 'horizontal',
                 useblit=True,
-                span_stays=True,
             )
         except Exception:
             self.span_selector_wave = None
@@ -333,7 +332,6 @@ class AudioFilterApp(QMainWindow):
                 self.on_select_pan,
                 'horizontal',
                 useblit=True,
-                span_stays=True,
             )
         except Exception:
             self.span_selector_pan = None
