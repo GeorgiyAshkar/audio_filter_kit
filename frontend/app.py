@@ -325,33 +325,45 @@ class AudioFilterApp(QMainWindow):
         # overview for choosing a region, while selecting on the
         # waveform allows fine adjustment.  Both selectors update
         # ``self.selection`` and redraw the plots.
-        try:
-            # Selector on the main waveform for fine adjustment
-            self.span_selector_wave = SpanSelector(
-                self.canvas.ax_wave,
-                self.on_select_span,
-                'horizontal',
-                useblit=True,
-                span_stays=True,
-            )
-        except Exception:
-            self.span_selector_wave = None
-        try:
-            # Selector on the panner for coarse selection
-            self.span_selector_pan = SpanSelector(
-                self.canvas.ax_pan,
-                self.on_select_pan,
-                'horizontal',
-                useblit=True,
-                span_stays=True,
-            )
-        except Exception:
-            self.span_selector_pan = None
+        self.span_selector_wave = self._create_span_selector(self.canvas.ax_wave, self.on_select_span)
+        self.span_selector_pan = self._create_span_selector(self.canvas.ax_pan, self.on_select_pan)
         splitter.addWidget(right)
         splitter.setSizes([360, 430, 760])
 
         # initialise transcripts label
         self.update_transcripts_label()
+
+    def _create_span_selector(self, axis, callback):
+        """
+        Build a SpanSelector compatible with multiple matplotlib versions.
+
+        Older versions support ``span_stays``, while newer versions use
+        ``interactive`` and dropped ``span_stays``.  This helper tries the
+        modern API first and gracefully falls back.
+        """
+        try:
+            return SpanSelector(
+                axis,
+                callback,
+                "horizontal",
+                useblit=True,
+                interactive=True,
+                drag_from_anywhere=True,
+                minspan=0.001,
+            )
+        except TypeError:
+            try:
+                return SpanSelector(
+                    axis,
+                    callback,
+                    "horizontal",
+                    useblit=True,
+                    span_stays=True,
+                )
+            except Exception:
+                return None
+        except Exception:
+            return None
 
     # ------------------- File operations -------------------
     def load_audio(self, title: str) -> Tuple[np.ndarray, int, str]:
@@ -822,6 +834,16 @@ class AudioFilterApp(QMainWindow):
         self.canvas.ax_wave.set_ylabel("Amplitude")
         self.canvas.ax_wave.grid(True)
         self.canvas.ax_wave.legend(loc="upper right")
+        if self.raw_sr > 0 and len(self.raw_signal) > 0:
+            full_end = max(1.0, len(self.raw_signal) / self.raw_sr)
+            if sel_start is not None and sel_end is not None:
+                sel_len = max(sel_end - sel_start, 1e-3)
+                pad = min(sel_len * 0.05, 0.5)
+                left = max(0.0, sel_start - pad)
+                right = min(full_end, sel_end + pad)
+                self.canvas.ax_wave.set_xlim(left, max(left + 1e-3, right))
+            else:
+                self.canvas.ax_wave.set_xlim(0.0, full_end)
         # Define helper to plot PSD for a (possibly selected) slice
         def plot_spec_slice(ax, y: np.ndarray, sr: int, label: str) -> None:
             if len(y) < 64:
@@ -1264,14 +1286,23 @@ class AudioFilterApp(QMainWindow):
                     self.set_status(f"Optuna search: {eval_counter['count']}/{max_eval} trials")
                 # Optionally update best result display
                 # Acquire best trial
-                best_trial = study.best_trial
-                if best_trial is not None:
-                    best_pipeline = best_trial.user_attrs.get("pipeline")
-                    best_metrics = best_trial.user_attrs.get("metrics")
-                    if best_pipeline is not None and best_metrics is not None:
-                        self.processed_signal = run_pipeline(raw, sr, best_pipeline)
-                        self.show_metrics(best_metrics, sr)
-                        self.redraw()
+                try:
+                    best_trial = study.best_trial
+                except Exception:
+                    return
+                if best_trial is None or best_trial.value is None or not np.isfinite(best_trial.value):
+                    return
+                best_pipeline = best_trial.user_attrs.get("pipeline")
+                best_metrics = best_trial.user_attrs.get("metrics")
+                if best_pipeline is None or best_metrics is None:
+                    return
+                try:
+                    self.processed_signal = run_pipeline(raw, sr, best_pipeline)
+                    self.show_metrics(best_metrics, sr)
+                    self.redraw()
+                except Exception:
+                    # Ignore preview redraw errors; they should not break the whole search.
+                    pass
             # Optimize
             self.set_status("searching best pipelines with Optuna...")
             try:
@@ -1281,11 +1312,13 @@ class AudioFilterApp(QMainWindow):
                 study = None
             if study is not None:
                 # Extract trials and pick top k
-                trials = sorted(study.trials, key=lambda t: t.value if t.value is not None else float("inf"))
+                valid_trials = [
+                    t for t in study.trials
+                    if (t.value is not None and np.isfinite(t.value) and not t.user_attrs.get("invalid_candidate", False))
+                ]
+                trials = sorted(valid_trials, key=lambda t: t.value)
                 results = []
                 for t in trials[:top_k]:
-                    if t.user_attrs.get("invalid_candidate", False):
-                        continue
                     pipe = t.user_attrs.get("pipeline")
                     metrics = t.user_attrs.get("metrics")
                     score = t.user_attrs.get("score")
@@ -1359,10 +1392,11 @@ class AudioFilterApp(QMainWindow):
             if i % 5 == 0 or i == max_eval:
                 self.set_status(f"Random search: {i}/{max_eval}")
                 # update best preview
-                best_curr = max(best_pipelines, key=lambda x: x["score"])
-                self.processed_signal = run_pipeline(raw, sr, best_curr["pipeline"])
-                self.show_metrics(best_curr["metrics"], sr)
-                self.redraw()
+                if best_pipelines:
+                    best_curr = max(best_pipelines, key=lambda x: x["score"])
+                    self.processed_signal = run_pipeline(raw, sr, best_curr["pipeline"])
+                    self.show_metrics(best_curr["metrics"], sr)
+                    self.redraw()
         # Sort and keep top k
         best_pipelines.sort(key=lambda x: x["score"], reverse=True)
         self.search_results = best_pipelines[:top_k]
