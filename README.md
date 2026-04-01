@@ -1,51 +1,38 @@
-# Audio Filter Kit (Unified Launch)
+# Audio Filter Kit (React + TypeScript)
 
-В проекте реализована единая точка запуска: **`python3 app.py`**.
+Единая точка запуска: **`python3 app.py`**.
 
-## Что делает `app.py`
-1. Проверяет наличие собранного фронтенда в `dist/`.
-2. Если `dist/` отсутствует — выполняет `npm install` и `npm run build` автоматически.
-3. Поднимает единый Python-сервер (Flask), который:
-   - раздаёт web UI,
-   - предоставляет API бэкенда (`/api/*`).
+`app.py` теперь запускает **React (Vite)**, без Flask.
 
-## Быстрый старт
+## Что делает `python3 app.py`
+1. Проверяет наличие `npm`.
+2. Устанавливает зависимости фронтенда (`npm install`), если нет `node_modules`.
+3. Запускает React-приложение (`npm run dev -- --host 0.0.0.0 --port 5173`).
 
-### 1) Установить Python-зависимости
-```bash
-python3 -m venv .venv
-source .venv/bin/activate
-pip install -r requirements.txt
-```
+## Запуск
 
-### 2) Установить Node.js (если ещё не установлен)
-Нужен `npm`, так как фронтенд собирается автоматически при первом запуске.
-
-### 3) Запустить приложение одной командой
 ```bash
 python3 app.py
 ```
 
-После запуска откройте:
-- `http://127.0.0.1:8000`
+После старта откройте:
+- `http://127.0.0.1:5173`
 
-## API endpoints
-- `GET /api/health` — проверка работоспособности
-- `GET /api/filters` — список доступных фильтров
-- `POST /api/process` — обработка сигнала пайплайном
-
-Пример тела `POST /api/process`:
-```json
-{
-  "sample_rate": 16000,
-  "raw": [0.0, 0.1, -0.05],
-  "reference": [0.0, 0.09, -0.04],
-  "pipeline": [
-    {"class": "MovingAverageFilter", "params": {"window": 5}}
-  ]
-}
+## Альтернативно вручную
+```bash
+npm install
+npm run dev -- --host 0.0.0.0 --port 5173
 ```
 
-## Примечания
-- Если среда блокирует доступ к npm registry, автоматическая сборка фронтенда может не выполниться.
-- В таком случае нужно открыть доступ к npm или предоставить заранее собранный `dist/`.
+## Зависимости
+### Node.js
+- Node.js 18+
+- npm
+
+### Python
+- стандартная библиотека Python 3.10+
+
+### Optional DSP (если используете Python backend отдельно)
+```bash
+pip install -r requirements.txt
+```

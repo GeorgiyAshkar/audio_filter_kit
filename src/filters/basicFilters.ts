@@ -18,8 +18,8 @@ export class GainFilter extends BaseFilter {
   constructor() {
     super('gain', 'Gain', { gain: 1 });
   }
-  paramSpec() {
-    return { gain: { type: 'number', min: 0.1, max: 3, step: 0.1, value: this.params.gain } };
+  paramSpec(): Record<string, FilterParamSpec> {
+    return { gain: { type: 'number' as const, min: 0.1, max: 3, step: 0.1, value: this.params.gain } };
   }
   process(samples: Float32Array): Float32Array {
     const out = new Float32Array(samples.length);
@@ -32,8 +32,8 @@ export class MovingAverageFilter extends BaseFilter {
   constructor() {
     super('moving_avg', 'Moving average', { window: 5 });
   }
-  paramSpec() {
-    return { window: { type: 'number', min: 1, max: 101, step: 2, value: this.params.window } };
+  paramSpec(): Record<string, FilterParamSpec> {
+    return { window: { type: 'number' as const, min: 1, max: 101, step: 2, value: this.params.window } };
   }
   process(samples: Float32Array): Float32Array {
     const w = Math.max(1, Math.floor(this.params.window));
@@ -55,8 +55,8 @@ export class NoiseGateFilter extends BaseFilter {
   constructor() {
     super('noise_gate', 'VAD noise gate', { threshold: 0.02 });
   }
-  paramSpec() {
-    return { threshold: { type: 'number', min: 0.001, max: 0.2, step: 0.001, value: this.params.threshold } };
+  paramSpec(): Record<string, FilterParamSpec> {
+    return { threshold: { type: 'number' as const, min: 0.001, max: 0.2, step: 0.001, value: this.params.threshold } };
   }
   process(samples: Float32Array): Float32Array {
     const out = new Float32Array(samples.length);

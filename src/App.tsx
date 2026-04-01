@@ -88,7 +88,12 @@ function App() {
                     value={f.params[name]}
                     onChange={(e) => {
                       const v = Number(e.target.value);
-                      setPipeline((prev) => prev.map((x, i) => i === idx ? { ...x, params: { ...x.params, [name]: v } } : x));
+                      setPipeline((prev) => prev.map((x, i) => {
+                        if (i !== idx) return x;
+                        const cloned = Object.create(Object.getPrototypeOf(x)) as AudioFilter;
+                        Object.assign(cloned, x, { params: { ...x.params, [name]: v } });
+                        return cloned;
+                      }));
                     }}
                   />
                 </label>
