@@ -1169,6 +1169,23 @@ class AudioFilterApp(QMainWindow):
         # Prepare results container
         results: List[Dict[str, Any]] = []
         eval_counter = {"count": 0}
+        failed_eval_counter = {"count": 0}
+
+        def evaluate_candidate(pipeline: List[FilterBase]) -> Tuple[Optional[Dict[str, float]], float]:
+            """
+            Safely evaluate a candidate pipeline.
+
+            Returns a tuple of (metrics, score).  If evaluation fails for any reason
+            (e.g. invalid parameter combination causing runtime/indexing errors),
+            metrics is None and score is -inf so the candidate is ignored.
+            """
+            try:
+                est = run_pipeline(raw, sr, pipeline)
+                metrics = compute_metrics(ref, est, sr)
+                return metrics, composite_score(metrics)
+            except Exception:
+                failed_eval_counter["count"] += 1
+                return None, float("-inf")
         # Use Optuna if available
         if optuna is not None:
             # Build a list of class names to use as categorical suggestions
@@ -1224,10 +1241,12 @@ class AudioFilterApp(QMainWindow):
                         else:
                             params[pname] = default
                     pipeline.append(cls(**params))
-                # Evaluate pipeline
-                est = run_pipeline(raw, sr, pipeline)
-                metrics = compute_metrics(ref, est, sr)
-                score = composite_score(metrics)
+                # Evaluate pipeline (robust to invalid combinations)
+                metrics, score = evaluate_candidate(pipeline)
+                if metrics is None:
+                    # Penalise invalid candidates but keep optimization running.
+                    trial.set_user_attr("invalid_candidate", True)
+                    return float("inf")
                 # Save candidate info
                 trial.set_user_attr("pipeline", pipeline)
                 trial.set_user_attr("metrics", metrics)
@@ -1265,6 +1284,8 @@ class AudioFilterApp(QMainWindow):
                 trials = sorted(study.trials, key=lambda t: t.value if t.value is not None else float("inf"))
                 results = []
                 for t in trials[:top_k]:
+                    if t.user_attrs.get("invalid_candidate", False):
+                        continue
                     pipe = t.user_attrs.get("pipeline")
                     metrics = t.user_attrs.get("metrics")
                     score = t.user_attrs.get("score")
@@ -1290,7 +1311,25 @@ class AudioFilterApp(QMainWindow):
                     self.processed_signal = run_pipeline(raw, sr, best["pipeline"])
                     self.show_metrics(best["metrics"], sr)
                     self.redraw()
-                QMessageBox.information(self, "Поиск завершен", f"Оценено {min(max_eval, eval_counter['count'])} комбинаций.")
+                valid_count = len([r for r in self.search_results if r.get("metrics") is not None])
+                if valid_count == 0:
+                    QMessageBox.warning(
+                        self,
+                        "Поиск завершен",
+                        (
+                            "Не удалось найти ни одной корректной комбинации фильтров. "
+                            "Попробуйте уменьшить глубину цепочки или ограничить набор фильтров."
+                        ),
+                    )
+                else:
+                    QMessageBox.information(
+                        self,
+                        "Поиск завершен",
+                        (
+                            f"Оценено {min(max_eval, eval_counter['count'])} комбинаций. "
+                            f"Ошибок при оценке: {failed_eval_counter['count']}."
+                        ),
+                    )
                 self.set_status("готово")
                 return
         # Fallback: random search
@@ -1308,9 +1347,9 @@ class AudioFilterApp(QMainWindow):
                     pipeline.append(cls(**params))
                 else:
                     pipeline.append(cls())
-            est = run_pipeline(raw, sr, pipeline)
-            metrics = compute_metrics(ref, est, sr)
-            score = composite_score(metrics)
+            metrics, score = evaluate_candidate(pipeline)
+            if metrics is None:
+                continue
             best_pipelines.append({
                 "pipeline": pipeline,
                 "metrics": metrics,
@@ -1339,7 +1378,21 @@ class AudioFilterApp(QMainWindow):
             self.processed_signal = run_pipeline(raw, sr, best["pipeline"])
             self.show_metrics(best["metrics"], sr)
             self.redraw()
-        QMessageBox.information(self, "Поиск завершен", f"Оценено {max_eval} комбинаций.")
+        if not self.search_results:
+            QMessageBox.warning(
+                self,
+                "Поиск завершен",
+                (
+                    "Случайный поиск не нашел корректных комбинаций фильтров. "
+                    "Попробуйте уменьшить глубину цепочки или ограничить набор фильтров."
+                ),
+            )
+        else:
+            QMessageBox.information(
+                self,
+                "Поиск завершен",
+                f"Оценено {max_eval} комбинаций. Ошибок при оценке: {failed_eval_counter['count']}.",
+            )
         self.set_status("готово")
 
     def apply_selected_search_result(self):
