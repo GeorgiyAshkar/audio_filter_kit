@@ -1,0 +1,44 @@
+version: '3.9'
+services:
+  gateway:
+    image: python:3.13-slim
+    working_dir: /app
+    volumes: ['.:/app']
+    command: bash -lc "pip install -r requirements.txt && uvicorn services.gateway.app.main:app --host 0.0.0.0 --port 8000"
+    ports: ['8000:8000']
+    depends_on: [audio-storage, filter-registry, processing, optimization, dataset-evaluation, speech-recognition, config-service]
+  audio-storage:
+    image: python:3.13-slim
+    working_dir: /app
+    volumes: ['.:/app']
+    command: bash -lc "pip install -r requirements.txt && uvicorn services.audio_storage.app.main:app --host 0.0.0.0 --port 8001"
+  filter-registry:
+    image: python:3.13-slim
+    working_dir: /app
+    volumes: ['.:/app']
+    command: bash -lc "pip install -r requirements.txt && uvicorn services.filter_registry.app.main:app --host 0.0.0.0 --port 8002"
+  processing:
+    image: python:3.13-slim
+    working_dir: /app
+    volumes: ['.:/app']
+    command: bash -lc "pip install -r requirements.txt && uvicorn services.processing.app.main:app --host 0.0.0.0 --port 8003"
+  optimization:
+    image: python:3.13-slim
+    working_dir: /app
+    volumes: ['.:/app']
+    command: bash -lc "pip install -r requirements.txt && uvicorn services.optimization.app.main:app --host 0.0.0.0 --port 8004"
+  dataset-evaluation:
+    image: python:3.13-slim
+    working_dir: /app
+    volumes: ['.:/app']
+    command: bash -lc "pip install -r requirements.txt && uvicorn services.dataset_evaluation.app.main:app --host 0.0.0.0 --port 8005"
+  speech-recognition:
+    image: python:3.13-slim
+    working_dir: /app
+    volumes: ['.:/app']
+    command: bash -lc "pip install -r requirements.txt && uvicorn services.speech_recognition.app.main:app --host 0.0.0.0 --port 8006"
+  config-service:
+    image: python:3.13-slim
+    working_dir: /app
+    volumes: ['.:/app']
+    command: bash -lc "pip install -r requirements.txt && uvicorn services.config_service.app.main:app --host 0.0.0.0 --port 8007"
