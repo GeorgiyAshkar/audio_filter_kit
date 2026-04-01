@@ -1,0 +1,5 @@
+# Python launcher has no third-party runtime dependencies.
+# Keep backend DSP dependencies here for optional API/processing extensions.
+numpy>=1.26.0
+scipy>=1.11.0
+librosa>=0.10.1

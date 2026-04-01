@@ -1,0 +1,13 @@
+:root { font-family: Inter, system-ui, sans-serif; color: #e5e7eb; background: #0b1020; }
+body { margin: 0; }
+.app-shell { padding: 16px; }
+.toolbar { display: flex; gap: 12px; margin-bottom: 10px; }
+.meta { display: grid; gap: 6px; margin-bottom: 10px; }
+.content-grid { display: grid; grid-template-columns: 300px 360px 1fr; gap: 12px; align-items: start; }
+.panel { background: #141a2f; border: 1px solid #2b365d; border-radius: 8px; padding: 12px; }
+.panel.wide { min-width: 0; }
+.list-row { display: block; margin: 6px 0; }
+.pipeline-card { border: 1px solid #33406d; border-radius: 8px; padding: 8px; margin: 8px 0; }
+.btn-row { display: flex; gap: 8px; }
+canvas { width: 100%; border: 1px solid #394978; border-radius: 6px; background: #111827; }
+button, input[type='file'] { margin-top: 6px; }
